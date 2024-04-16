@@ -3,54 +3,159 @@ package emailcheryp
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
 var (
 	samples = []struct {
-		mail    string
-		format  bool
-		account bool // local part + domain
+		mail             string
+		syntaxValidated  bool
+		domainValidated  bool
+		mxValidated      bool
+		accountValidated bool // local part + domain
 	}{
 		// 1. Syntax validation: OK, Account: exist
-		{mail: "jiapeish@gmail.com", format: true, account: true},
-		{mail: "florian@carrere.cc", format: true, account: true},
-		{mail: " florian@carrere.cc", format: true, account: true},
-		{mail: "florian@carrere.cc ", format: true, account: true},
+		{
+			mail:             "jiapeish@gmail.com",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: true,
+		},
+		{
+			mail:             "florian@carrere.cc",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: true,
+		},
+		{
+			mail:             " florian@carrere.cc",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: true,
+		},
+		{
+			mail:             "florian@carrere.cc ",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: true,
+		},
 
 		// 2. Syntax validation: OK, Account: not exist
-		{mail: "support@g2mail.com", format: true, account: false},
-		{mail: "test@912-wrong-domain902.com", format: true, account: false},
-		{mail: "admin@notarealdomain12345.com", format: true, account: false},
-		{mail: "a@gmail.xyz", format: true, account: false},
+		{
+			mail:             "support@g2mail.com",
+			syntaxValidated:  true,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "test@912-wrong-domain902.com",
+			syntaxValidated:  true,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "admin@notarealdomain12345.com",
+			syntaxValidated:  true,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "a@gmail.xyz",
+			syntaxValidated:  true,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
 
 		// this email address is syntax validate, but not ISP-Specific syntax validate
 		// https://verifalia.com/validate-email
 		// we need add rules later
-		{mail: "0932910-qsdcqozuioqkdmqpeidj8793@gmail.com", format: true, account: false},
-		{mail: " test@gmail.com", format: true, account: false},
+		{
+			mail:             "0932910-qsdcqozuioqkdmqpeidj8793@gmail.com",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: false,
+		},
+		{
+			mail:             " test@gmail.com",
+			syntaxValidated:  true,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: false,
+		},
 
 		// 3. Syntax validation: not OK, Account: not exist
-		{mail: "@gmail.com", format: false, account: false},
-		{mail: "test@gmail@gmail.com", format: false, account: false},
-		{mail: "test test@gmail.com", format: false, account: false},
-		{mail: "test@wrong domain.com", format: false, account: false},
-		{mail: "", format: false, account: false},
-		{mail: "not-a-valid-email", format: false, account: false},
+		{
+			mail:             "@gmail.com",
+			syntaxValidated:  false,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: false,
+		},
+		{
+			mail:             "test@gmail@gmail.com",
+			syntaxValidated:  false,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "test test@gmail.com",
+			syntaxValidated:  false,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: false,
+		},
+		{
+			mail:             "test@wrong domain.com",
+			syntaxValidated:  false,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "",
+			syntaxValidated:  false,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
+		{
+			mail:             "not-a-valid-email",
+			syntaxValidated:  false,
+			domainValidated:  false,
+			mxValidated:      false,
+			accountValidated: false,
+		},
 
 		// some validate tools consider these addresses as Syntax validation OK.
 		// https://verifalia.com/validate-email
-		{mail: "é&ààà@gmail.com", format: false, account: false},
+		{
+			mail:             "é&ààà@gmail.com",
+			syntaxValidated:  false,
+			domainValidated:  true,
+			mxValidated:      true,
+			accountValidated: false,
+		},
 	}
 )
 
 func TestValidateFormat(t *testing.T) {
 	for _, s := range samples {
 		err := ValidateFormat(s.mail)
-		if err != nil && s.format == true {
+		if err != nil && s.syntaxValidated == true {
 			t.Errorf(`"%s" => unexpected error: "%v"`, s.mail, err)
 		}
-		if err == nil && s.format == false {
+		if err == nil && s.syntaxValidated == false {
 			t.Errorf(`"%s" => expected error`, s.mail)
 		}
 	}
@@ -58,15 +163,15 @@ func TestValidateFormat(t *testing.T) {
 
 func TestValidateDomain(t *testing.T) {
 	for _, s := range samples {
-		if !s.format {
+		if !s.syntaxValidated {
 			continue
 		}
 
 		err := ValidateDomain(s.mail)
-		if err != nil && s.account == true {
+		if err != nil && s.domainValidated == true {
 			t.Errorf(`"%s" => unexpected error: "%v"`, s.mail, err)
 		}
-		if err == nil && s.account == false {
+		if err == nil && s.domainValidated == false {
 			t.Errorf(`"%s" => expected error`, s.mail)
 		}
 	}
@@ -74,15 +179,15 @@ func TestValidateDomain(t *testing.T) {
 
 func TestValidateMX(t *testing.T) {
 	for _, s := range samples {
-		if !s.format {
+		if !s.syntaxValidated {
 			continue
 		}
 
 		err := ValidateMX(s.mail)
-		if err != nil && s.account == true {
+		if err != nil && s.mxValidated == true {
 			t.Errorf(`"%s" => unexpected error: "%v"`, s.mail, err)
 		}
-		if err == nil && s.account == false {
+		if err == nil && s.mxValidated == false {
 			t.Errorf(`"%s" => expected error`, s.mail)
 		}
 	}
@@ -90,20 +195,21 @@ func TestValidateMX(t *testing.T) {
 
 func TestValidateLocalAndDomain(t *testing.T) {
 	var (
-		serverHostName    = getenv(t, "self_hostname")
-		serverMailAddress = getenv(t, "self_mail")
+		serverHostName    = "gmail.com"
+		serverMailAddress = "jiapeish2@gmail.com"
 	)
 	for _, s := range samples {
-		if !s.format {
+		mail := strings.TrimSpace(s.mail)
+		if !s.syntaxValidated {
 			continue
 		}
 
-		err := ValidateLocalAndDomain(serverHostName, serverMailAddress, s.mail)
-		if err != nil && s.account == true {
-			t.Errorf(`"%s" => unexpected error: "%v"`, s.mail, err)
+		err := ValidateLocalAndDomain(serverHostName, serverMailAddress, mail)
+		if err != nil && s.accountValidated == true {
+			t.Errorf(`"%s" => unexpected error: "%v"`, mail, err)
 		}
-		if err == nil && s.account == false {
-			t.Errorf(`"%s" => expected error`, s.mail)
+		if err == nil && s.accountValidated == false {
+			t.Errorf(`"%s" => expected error`, mail)
 		}
 	}
 }
