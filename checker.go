@@ -130,11 +130,15 @@ func DialTimeout(addr string, timeout time.Duration) (*smtp.Client, error) {
 }
 
 func split(email string) (local, domain string) {
-	at := strings.LastIndexByte(email, '@')
+	// remove leading and trailing whitespaces
+	e := strings.TrimSpace(email)
+
+	at := strings.LastIndexByte(e, '@')
 	// no @ present
+	// or should we just return "", ""?
 	if at == -1 {
-		return email, ""
+		return e, ""
 	}
-	// or just return "", ""
-	return email[:at], email[at+1:]
+
+	return e[:at], e[at+1:]
 }

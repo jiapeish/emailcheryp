@@ -15,11 +15,11 @@ var (
 		// 1. Syntax validation: OK, Account: exist
 		{mail: "jiapeish@gmail.com", format: true, account: true},
 		{mail: "florian@carrere.cc", format: true, account: true},
+		{mail: " florian@carrere.cc", format: true, account: true},
+		{mail: "florian@carrere.cc ", format: true, account: true},
 
 		// 2. Syntax validation: OK, Account: not exist
 		{mail: "support@g2mail.com", format: true, account: false},
-		{mail: " florian@carrere.cc", format: true, account: false},
-		{mail: "florian@carrere.cc ", format: true, account: false},
 		{mail: "test@912-wrong-domain902.com", format: true, account: false},
 		{mail: "admin@notarealdomain12345.com", format: true, account: false},
 		{mail: "a@gmail.xyz", format: true, account: false},
